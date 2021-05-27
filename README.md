@@ -20,13 +20,10 @@ pyenv virtualenv my_env
 pyenv local my_env
 
 # Install the dependencies.
-python -m pip install pyopenssl
-python -m pip install git+https://github.com/googleapis/google-auth-library-python.git@corp_cert
+python -m pip install -r requirements.txt
 ```
 
-## Install PKCS11 support and Verify with OpenSSL
-
-### Install openssl with pkcs11 
+## Install openssl with pkcs11
 
 First install openssl with its [PKCS11 engine](https://github.com/OpenSC/libp11#openssl-engines).
 
@@ -79,25 +76,26 @@ $ openssl engine -t -c pkcs11
 
 ### SOFTHSM
 
-SoftHSM is as the name suggests, a sofware "HSM" module used for testing.   It is ofcourse not hardware backed but the module does allow for a PKCS11 interface which we will also use for testing.
+SoftHSM is as the name suggests, a sofware "HSM" module used for testing.   It is of course not hardware backed but the module does allow for a PKCS11 interface which we will also use for testing.
 
-First make sure the softhsm library is installed
+First install the softhsm library.
 
 - [SoftHSM Install](https://www.opendnssec.org/softhsm/)
 
-Setup a config file where the `directories.tokendir` points to a existing folder where softHSM will save all its data (in this case its `./tokens/`)
-
+Next in this codelab, create a `tokens` folder.
 ```bash
-mkdir tokens
+$ mkdir tokens
 ```
 
-Edit `softhsm.conf`
-and edit the value for `directories.tokendir`
+Then open the `softhsm.conf` file, and set the `directories.tokendir` value to the absolute path of the
+`tokens` folder. This way SoftHSM will save 
+tokens into the `./tokens/` folder.
 
 ```bash
+# softhsm.conf content looks like this
 log.level = DEBUG
 objectstore.backend = file
-directories.tokendir = /absolute/path/to/pkcs11_signer/misc/tokens/
+directories.tokendir = /absolute/path/of/tokens/folder/
 slots.removable = true
 ```
 
@@ -123,10 +121,10 @@ openssl engine dynamic \
       [ available ] 
 ```
 
-Use [pkcs11-too](https://manpages.debian.org/testing/opensc/pkcs11-tool.1.en.html) which comes with the installation of opensc
+Next initialize SoftHSM with [pkcs11-too](https://manpages.debian.org/testing/opensc/pkcs11-tool.1.en.html).
 
 ```bash
-export SOFTHSM2_CONF=/absolute/path/to/pkcs11_signer/misc/softhsm.conf
+export SOFTHSM2_CONF=./softhsm.conf
 
 ## init softhsm
 pkcs11-tool --module /usr/local/lib/softhsm/libsofthsm2.so --slot-index=0 --init-token --label="token1" --so-pin="123456"
@@ -161,8 +159,6 @@ $ openssl ec -inform PEM -outform DER -in key.pem -out key.der
 
 Now we can import the private key into SoftHSM.
 ```bash
-$ export SOFTHSM2_CONF=/absolute/path/to/pkcs11_signer/misc/softhsm.conf
-
 # Import the private key into SoftHSM
 $ pkcs11-tool  --module /usr/local/lib/softhsm/libsofthsm2.so --pin mynewpin \
    --write-object key.der --type privkey --id 1111 --label mtlskey --slot-index 0
@@ -178,21 +174,31 @@ Private Key Object; EC
 ```
 ## Run the sample application
 
-First we need to set the credentials. The project is `sijunliu-dca-test`, and we need to copy the
-user credential json file to `~/.config/gcloud/application_default_credentials.json`, or set
-`GOOGLE_APPLICATION_CREDENTIALS` to the user credential json file path.
+First we need to set the credentials by logging in with `sijunliu@beyondcorp.us` account.
+```bash
+$ gcloud auth application-default login
+```
 
-Then edit `sample.py`, fill in the cert and key, then run `python sample.py`. The first sample runs
-with the cert and key PEM bytes, the second sample uses the cert PEM bytes but the key from SoftHSM.
+This command generates a `~/.config/gcloud/application_default_credentials.json` file. Add 
+`"quota_project_id": "sijunliu-dca-test",` to the json file if the file doesn't contain it.
+
+Next set the environment variable to enable mTLS in google auth library.
+```bash
+$ export GOOGLE_API_USE_CLIENT_CERTIFICATE=true
+```
+
+Then edit `sample.py`, fill in the cert and key, then run `python sample.py`. The sample code
+runs `run_sample` function twice, the first one runs with the cert and key PEM bytes, the
+second one uses the cert PEM bytes but the key is from SoftHSM.
 
 You should see:
-```
-python sample.py 
+```bash
+$ python sample.py 
 {}
 
 {}
 ```
 
-Then replace `f'https://pubsub.mtls.googleapis.com/v1/projects/{project}/topics')` with 
+Next replace `f'https://pubsub.mtls.googleapis.com/v1/projects/{project}/topics')` with 
 `f'https://pubsub.googleapis.com/v1/projects/{project}/topics')`, and run `python sample.py` again. 
 You should see both fail with 403 error since we changed mTLS endpoint to regular endpoint.
