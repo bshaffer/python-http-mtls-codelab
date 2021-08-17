@@ -1,4 +1,4 @@
-def first_way_to_load():
+def first_way_to_load(key_id):
     # This way we need to set the engine path:
     # export OPENSSL_ENGINES=/usr/lib/x86_64-linux-gnu/engines-1.1
     from OpenSSL._util import (
@@ -15,15 +15,14 @@ def first_way_to_load():
     if not _lib.ENGINE_init(e):
         raise ValueError("failed to init engine: ")
 
-    key = _lib.ENGINE_load_private_key(e, b"pkcs11:token=token1;object=mtlskey;pin-value=mynewpin", null, null)
+    key = _lib.ENGINE_load_private_key(e, key_id, null, null)
     if not key:
         raise ValueError("failed to load private key: ")
 
-    print(key)
+    return key
 
-#first_way_to_load()
 
-def second_way_to_load():
+def second_way_to_load(key_id):
     # This way we don't set the engine path
     from OpenSSL._util import (
         ffi as _ffi,
@@ -47,10 +46,11 @@ def second_way_to_load():
     if not _lib.ENGINE_init(e):
         raise ValueError("failed to init engine: ")
 
-    key = _lib.ENGINE_load_private_key(e, b"pkcs11:token=token1;object=mtlskey;pin-value=mynewpin", null, null)
+    key = _lib.ENGINE_load_private_key(e, key_id, null, null)
     if not key:
         raise ValueError("failed to load private key: ")
 
-    print(key)
+    return key
 
-#second_way_to_load()
+#print(first_way_to_load(b"pkcs11:token=token1;object=mtlskey;pin-value=mynewpin"))
+#print(second_way_to_load(b"pkcs11:token=token1;object=mtlskey;pin-value=mynewpin"))
