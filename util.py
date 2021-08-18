@@ -52,5 +52,7 @@ def second_way_to_load(key_id):
 
     return key
 
-#print(first_way_to_load(b"pkcs11:token=token1;object=mtlskey;pin-value=mynewpin"))
-#print(second_way_to_load(b"pkcs11:token=token1;object=mtlskey;pin-value=mynewpin"))
+if __name__ == "__main__":
+    #print(first_way_to_load(b"pkcs11:token=token1;object=mtlskey;pin-value=mynewpin"))
+    #print(second_way_to_load(b"pkcs11:token=token1;object=mtlskey;pin-value=mynewpin"))
+    pass
