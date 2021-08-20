@@ -51,6 +51,8 @@ def test_use_key_from_hsm(cert_path, key_id):
     print("test_use_key_from_hsm succeeded")
 
 if __name__ == "__main__":
-    test_use_key_from_file(b"./eccert.pem", b"./eckey.pem")
-    test_use_key_from_hsm(b"./eccert.pem", b"pkcs11:token=token1;object=eckey;pin-value=mynewpin")
+    print("============ testing using key from file ================")
+    test_use_key_from_file(b"./cert.pem", b"./key.pem")
+    print("============ testing using key from hsm ================")
+    test_use_key_from_hsm(b"./cert.pem", b"pkcs11:token=token1;object=mtlskey;pin-value=mynewpin")
 
