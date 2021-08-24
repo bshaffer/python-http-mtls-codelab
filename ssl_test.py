@@ -15,11 +15,13 @@ def test_use_key_from_file(cert_path, key_path):
 
 def test_use_key_from_hsm(cert_path, key_id):
     import OpenSSL.SSL
+    from OpenSSL.crypto import _new_mem_buf, _bio_to_string
     from OpenSSL._util import exception_from_error_queue as _exception_from_error_queue
     from OpenSSL._util import (
         ffi as _ffi,
         lib as _lib,
     )
+    import tempfile
 
     null = _ffi.NULL
 
@@ -41,13 +43,27 @@ def test_use_key_from_hsm(cert_path, key_id):
     key = _lib.ENGINE_load_private_key(e, key_id, null, null)
     if not key:
         raise ValueError("failed to load private key: ")
-    
+
+    helper = OpenSSL.crypto._PassphraseHelper(OpenSSL.crypto.FILETYPE_PEM, None)
+    ec_pkey = _lib.EVP_PKEY_get1_EC_KEY(key)
+    bio_priv = _new_mem_buf()
+    if not _lib.PEM_write_bio_ECPrivateKey(bio_priv, ec_pkey, null, null, 0,
+        helper.callback, helper.callback_args):
+        raise ValueError("failed to write key to buffer")
+
+    fname = tempfile.NamedTemporaryFile().name
+    f = open(fname, "wb")
+    f.write(_bio_to_string(bio_priv))
+    f.close()
+
     context = OpenSSL.SSL.Context(6)
 
     if not _lib.SSL_CTX_use_certificate_file(context._context, cert_path, 1):
         _exception_from_error_queue(Exception)
-    if not _lib.SSL_CTX_use_PrivateKey(context._context, key):
+    if not _lib.SSL_CTX_use_PrivateKey_file(context._context, fname.encode('utf-8'), 1):
         _exception_from_error_queue(Exception)
+    if not _lib.SSL_CTX_check_private_key(context._context):
+        print("check private key failed")
     print("test_use_key_from_hsm succeeded")
 
 if __name__ == "__main__":
